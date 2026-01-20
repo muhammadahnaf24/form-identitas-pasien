@@ -28,7 +28,7 @@ defineEmits(["update:modelValue"]);
         @input="$emit('update:modelValue', $event.target.value)"
         :placeholder="placeholder"
         :readonly="readonly"
-        class="block w-full rounded-md border-0 py-1.5 px-3 shadow-sm ring-1 ring-inset focus:ring-2 sm:text-sm sm:leading-6"
+        class="block w-full rounded-md border-0 py-1.5 px-3 shadow-xs ring-1 ring-inset focus:ring-1 sm:text-sm sm:leading-6"
         :class="[
           readonly
             ? 'bg-blue-50 text-blue-700 font-semibold ring-gray-300 focus:ring-gray-300 cursor-not-allowed text-center'

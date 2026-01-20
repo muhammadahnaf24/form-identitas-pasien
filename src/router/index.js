@@ -1,17 +1,32 @@
 import { createRouter, createWebHistory } from "vue-router";
-// 1. Import komponen view yang baru dibuat
-import IdentitasView from "@/views/IdentitasView.vue";
+import IdentitasView from "../views/IdentitasView.vue";
+import Identitas2View from "@/views/Identitas2View.vue";
+import RawatInapView from "../views/RawatInapView.vue";
+import DashboardView from "@/views/DashboardView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: "/",
-      name: "home",
-      // 2. Pasang sebagai halaman utama (atau path lain misal '/form')
+      name: "dashboard",
+      component: DashboardView,
+    },
+    {
+      path: "/identitas",
+      name: "identitas",
       component: IdentitasView,
     },
-    // ... route lainnya biarkan saja
+    {
+      path: "/identitas2",
+      name: "identitas2",
+      component: Identitas2View,
+    },
+    {
+      path: "/rawat-inap",
+      name: "rawat-inap",
+      component: RawatInapView,
+    },
   ],
 });
 

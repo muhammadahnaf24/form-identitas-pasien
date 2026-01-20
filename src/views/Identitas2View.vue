@@ -1,20 +1,11 @@
 <script setup>
-import {
-  reactive,
-  computed,
-  toRef,
-  ref,
-  watchEffect,
-  onMounted,
-  watch,
-} from "vue";
+import { reactive, computed, toRef, ref, onMounted, watch } from "vue";
 import BaseSignaturePad from "@/components/BaseSignaturePad.vue";
 import BaseInput from "@/components/BaseInput.vue";
 import BaseRadioGroup from "@/components/BaseRadioGroup.vue";
 import BaseSelect from "@/components/BaseSelect.vue";
 import PasienLabel from "@/components/PasienLabel.vue";
 import CetakIdentitas from "@/components/CetakIdentitas.vue";
-import { useAge } from "@/composables/useAge";
 import { useAgeDatefns } from "@/composables/useAgeDatefns";
 import wilayahServices from "@/services/wilayahServices.js";
 import BaseSelectWilayah from "@/components/BaseSelectWilayah.vue";
@@ -36,41 +27,65 @@ const opsiGender = [
 ];
 
 const form = reactive({
-  namaLengkap: "",
-  namaPanggilan: "",
-  tempatLahir: "",
-  tanggalLahir: "",
-  umurTahun: "",
-  umurBulan: "",
-  status: "",
-  jenisKelamin: "",
-  agama: "",
-  pendidikan: "",
-  pekerjaan: "",
-  noHp: "",
-  alamat: "",
-  rt: "",
-  rw: "",
-  desa: "",
-  kecamatan: "",
-  kabupaten: "",
-  daruratNama: "",
-  daruratAlamat: "",
-  daruratRt: "",
-  daruratRw: "",
-  daruratDesa: "",
-  daruratKecamatan: "",
-  daruratKabupaten: "",
-  daruratHp1: "",
-  daruratHp2: "",
-  hubungan: "",
+  identitas: {
+    noRm: "",
+    nik: "",
+    namaLengkap: "",
+    namaPanggilan: "",
+    tempatLahir: "",
+    tanggalLahir: "",
+    jenisKelamin: "",
+    status: "",
+    agama: "",
+    pendidikan: "",
+    pekerjaan: "",
+    noHp: "",
+    umurTahun: 0,
+    umurBulan: 0,
+    umurHari: 0,
+  },
+
+  alamat: {
+    alamatJalan: "",
+    rt: "",
+    rw: "",
+    provinsiId: "",
+    provinsi: "",
+    kabupatenId: "",
+    kabupaten: "",
+    kecamatanId: "",
+    kecamatan: "",
+    desaId: "",
+    desa: "",
+  },
+
+  darurat: {
+    nama: "",
+    hubungan: "",
+    hp1: "",
+    hp2: "",
+    alamatJalan: "",
+    rt: "",
+    rw: "",
+    provinsiId: "",
+    provinsi: "",
+    kabupatenId: "",
+    kabupaten: "",
+    kecamatanId: "",
+    kecamatan: "",
+    desaId: "",
+    desa: "",
+  },
   tandaTangan: "",
-  nik: "",
-  noRm: "",
 });
 
-const tglLahirRef = toRef(form, "tanggalLahir");
-const { umurTahun, umurBulan } = useAgeDatefns(tglLahirRef);
+const listWilayah = reactive({
+  pasien: { provinsi: [], kabupaten: [], kecamatan: [], desa: [] },
+  darurat: { provinsi: [], kabupaten: [], kecamatan: [], desa: [] },
+});
+
+const tglLahirRef = toRef(form.identitas, "tanggalLahir");
+const { umurTahun, umurBulan, umurHari } = useAgeDatefns(tglLahirRef);
 
 const tanggalHariIni = computed(() => {
   return new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(
@@ -78,147 +93,183 @@ const tanggalHariIni = computed(() => {
   );
 });
 
+const handleChangeWilayah = async (kategori, level, newVal) => {
+  const targetList = listWilayah[kategori]; // pasien atau darurat
+  const targetForm = kategori === "pasien" ? form.alamat : form.darurat;
+
+  // 1. Simpan NAMA wilayah (Untuk kebutuhan backend/cetak)
+  if (newVal) {
+    const selectedItem = targetList[level].find((item) => item.id === newVal);
+    if (selectedItem) targetForm[level] = selectedItem.name;
+  } else {
+    targetForm[level] = "";
+  }
+
+  // 2. Logic Fetching Data Anak (Chain)
+  try {
+    if (level === "provinsi") {
+      // Reset anak-anaknya
+      targetForm.kabupatenId = "";
+      targetForm.kabupaten = "";
+      targetList.kabupaten = [];
+      targetForm.kecamatanId = "";
+      targetForm.kecamatan = "";
+      targetList.kecamatan = [];
+      targetForm.desaId = "";
+      targetForm.desa = "";
+      targetList.desa = [];
+
+      if (newVal) {
+        const res = await wilayahServices.getRegencies(newVal);
+        targetList.kabupaten = res.data;
+      }
+    } else if (level === "kabupaten") {
+      targetForm.kecamatanId = "";
+      targetForm.kecamatan = "";
+      targetList.kecamatan = [];
+      targetForm.desaId = "";
+      targetForm.desa = "";
+      targetList.desa = [];
+
+      if (newVal) {
+        const res = await wilayahServices.getDistricts(newVal);
+        targetList.kecamatan = res.data;
+      }
+    } else if (level === "kecamatan") {
+      targetForm.desaId = "";
+      targetForm.desa = "";
+      targetList.desa = [];
+
+      if (newVal) {
+        const res = await wilayahServices.getVillages(newVal);
+        targetList.desa = res.data;
+      }
+    }
+  } catch (error) {
+    console.error(`Gagal mengambil data ${level} untuk ${kategori}:`, error);
+  }
+};
+
+watch(
+  () => form.alamat.provinsiId,
+  (val) => handleChangeWilayah("pasien", "provinsi", val),
+);
+watch(
+  () => form.alamat.kabupatenId,
+  (val) => handleChangeWilayah("pasien", "kabupaten", val),
+);
+watch(
+  () => form.alamat.kecamatanId,
+  (val) => handleChangeWilayah("pasien", "kecamatan", val),
+);
+watch(
+  () => form.alamat.desaId,
+  (val) => handleChangeWilayah("pasien", "desa", val),
+);
+
+// Darurat
+watch(
+  () => form.darurat.provinsiId,
+  (val) => handleChangeWilayah("darurat", "provinsi", val),
+);
+watch(
+  () => form.darurat.kabupatenId,
+  (val) => handleChangeWilayah("darurat", "kabupaten", val),
+);
+watch(
+  () => form.darurat.kecamatanId,
+  (val) => handleChangeWilayah("darurat", "kecamatan", val),
+);
+watch(
+  () => form.darurat.desaId,
+  (val) => handleChangeWilayah("darurat", "desa", val),
+);
+
+// --- LOGIC "SAMA DENGAN PASIEN" (BEST PRACTICE: ASYNC) ---
+const isSameAddress = ref(false);
+
+const copyAddressToDarurat = async () => {
+  if (!isSameAddress.value) return;
+
+  // 1. Copy Text Manual
+  form.darurat.alamatJalan = form.alamat.alamatJalan;
+  form.darurat.rt = form.alamat.rt;
+  form.darurat.rw = form.alamat.rw;
+
+  // 2. Copy Wilayah Bertahap (Sequence)
+  // Kita copy ID provinsi dulu
+  form.darurat.provinsiId = form.alamat.provinsiId;
+
+  // Kita tunggu sebentar atau pastikan list kabupaten terisi sebelum set ID kabupaten
+  // Karena watcher di atas sudah async, kita perlu sedikit trik agar urutan terjaga
+  // Cara paling robust tanpa watcher hell adalah memanggil service manual di sini:
+
+  if (form.alamat.provinsiId) {
+    // A. Load Kabupaten Darurat
+    const resKab = await wilayahServices.getRegencies(form.alamat.provinsiId);
+    listWilayah.darurat.kabupaten = resKab.data;
+    form.darurat.kabupatenId = form.alamat.kabupatenId; // Set ID setelah list ada
+
+    if (form.alamat.kabupatenId) {
+      // B. Load Kecamatan Darurat
+      const resKec = await wilayahServices.getDistricts(
+        form.alamat.kabupatenId,
+      );
+      listWilayah.darurat.kecamatan = resKec.data;
+      form.darurat.kecamatanId = form.alamat.kecamatanId;
+
+      if (form.alamat.kecamatanId) {
+        // C. Load Desa Darurat
+        const resDesa = await wilayahServices.getVillages(
+          form.alamat.kecamatanId,
+        );
+        listWilayah.darurat.desa = resDesa.data;
+        form.darurat.desaId = form.alamat.desaId;
+      }
+    }
+  }
+};
+
+watch(isSameAddress, (val) => {
+  if (val) {
+    copyAddressToDarurat();
+  } else {
+    // Optional: Reset form darurat jika uncheck
+    // Object.assign(form.darurat, { provinsiId: "", kabupatenId: "", ... });
+  }
+});
+
+// --- MOUNTED ---
+onMounted(async () => {
+  try {
+    const res = await wilayahServices.getProvinces();
+    listWilayah.pasien.provinsi = res.data;
+    listWilayah.darurat.provinsi = res.data; // Isi juga list darurat
+  } catch (e) {
+    console.error(e);
+  }
+});
+
 const handleSignatureUpdate = (dataUrl) => {
   form.tandaTangan = dataUrl;
 };
 
 const handleSubmit = () => {
-  form.umurTahun = umurTahun.value;
-  form.umurBulan = umurBulan.value;
-  console.log("Payload:", form);
-  alert("Data Pasien Berhasil Disimpan.");
+  form.identitas.umurTahun = umurTahun.value;
+  form.identitas.umurBulan = umurBulan.value;
+
+  // Payload sudah rapi, berisi ID dan Nama Wilayah
+  console.log("PAYLOAD FINAL:", JSON.stringify(form, null, 2));
+  alert("Data Tersimpan! (Cek Console)");
 };
 
-const isSameAddress = ref(false);
-
-watchEffect(() => {
-  form.umurBulan = umurBulan.value;
-  form.umurTahun = umurTahun.value;
-  if (isSameAddress.value) {
-    form.daruratAlamat = form.alamat;
-    form.daruratRt = form.rt;
-    form.daruratRw = form.rw;
-    form.daruratDesa = form.desa;
-    form.daruratKecamatan = form.kecamatan;
-    form.daruratKabupaten = form.kabupaten;
-  }
-});
-
 const handlePrint = () => {
-  if (!form.namaLengkap) {
+  if (!form.identitas.namaLengkap) {
     alert("Mohon isi Nama Lengkap sebelum mencetak.");
     return;
   }
   window.print();
 };
-
-const wilayah = reactive({
-  listProvinsi: [],
-  listKabupaten: [],
-  listKecamatan: [],
-  listDesa: [],
-});
-
-const formWilayah = reactive({
-  provinsiId: "",
-  kabupatenId: "",
-  kecamatanId: "",
-  desaId: "",
-});
-
-onMounted(async () => {
-  console.log("Mulai mengambil data provinsi...");
-  try {
-    const res = await wilayahServices.getProvinces();
-    console.log("Data Provinsi dari API:", res.data);
-    wilayah.listProvinsi = res.data;
-  } catch (e) {
-    console.error("Error fetching provinces:", e);
-  }
-});
-
-watch(
-  () => formWilayah.provinsiId,
-  async (newVal) => {
-    console.log("1. Provinsi ID Berubah jadi:", newVal);
-    formWilayah.kabupatenId = "";
-    formWilayah.kecamatanId = "";
-    formWilayah.desaId = "";
-    wilayah.listKabupaten = [];
-    wilayah.listKecamatan = [];
-    wilayah.listDesa = [];
-    if (!newVal) return;
-    const selectedProvinsi = wilayah.listProvinsi.find(
-      (prov) => prov.id === newVal,
-    );
-    if (selectedProvinsi) {
-      formWilayah.provinsiName = selectedProvinsi.name;
-    }
-    try {
-      console.log("2. Memanggil API Kabupaten...");
-      const res = await wilayahServices.getRegencies(newVal);
-      console.log("Data Kabupaten dari API:", res.data);
-      wilayah.listKabupaten = res.data;
-      console.log("3. Kabupaten ID:", wilayah.kabupatenId);
-    } catch (e) {
-      console.error("Error fetching regencies:", e);
-    }
-  },
-);
-
-watch(
-  () => formWilayah.kabupatenId,
-  async (newVal) => {
-    formWilayah.kecamatanId = "";
-    formWilayah.desaId = "";
-    wilayah.listKecamatan = [];
-    wilayah.listDesa = [];
-    if (!newVal) return;
-    const selectedKabupaten = wilayah.listKabupaten.find(
-      (kab) => kab.id === newVal,
-    );
-    if (selectedKabupaten) {
-      formWilayah.kabupatenName = selectedKabupaten.name;
-    }
-    try {
-      const res = await wilayahServices.getDistricts(newVal);
-      wilayah.listKecamatan = res.data;
-    } catch (e) {
-      console.error("Error fetching districts:", e);
-    }
-  },
-);
-
-watch(
-  () => formWilayah.kecamatanId,
-  async (newVal) => {
-    formWilayah.desaId = "";
-    wilayah.listDesa = [];
-    if (!newVal) return;
-    const selectedKecamatan = wilayah.listKecamatan.find(
-      (kec) => kec.id === newVal,
-    );
-    if (selectedKecamatan) {
-      formWilayah.kecamatanName = selectedKecamatan.name;
-    }
-    try {
-      const res = await wilayahServices.getVillages(newVal);
-      wilayah.listDesa = res.data;
-    } catch (e) {
-      console.error("Error fetching villages:", e);
-    }
-  },
-);
-watch(
-  () => formWilayah.desaId,
-  (newVal) => {
-    if (!newVal) return;
-    const selectedDesa = wilayah.listDesa.find((desa) => desa.id === newVal);
-    if (selectedDesa) {
-      formWilayah.desa = selectedDesa.name;
-    }
-  },
-);
 </script>
 
 <template>
@@ -240,7 +291,7 @@ watch(
         </span>
       </div>
     </div>
-    <!-- <PasienLabel :pasien-data="form" /> -->
+    <PasienLabel :pasien-data="form" />
     <form @submit.prevent="handleSubmit" class="space-y-8">
       <div
         class="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden"
@@ -257,31 +308,40 @@ watch(
           </h2>
 
           <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6">
-            <!-- <div class="sm:col-span-3">
-              <BaseInput v-model="form.noRm" label="No. Rekam Medis" />
+            <div class="sm:col-span-3">
+              <BaseInput
+                v-model="form.identitas.noRm"
+                label="No. Rekam Medis"
+              />
             </div>
             <div class="sm:col-span-3">
               <BaseInput
-                v-model="form.nik"
+                v-model="form.identitas.nik"
                 label="Nomor Induk Kependudukan (NIK)"
                 type="number"
               />
-            </div> -->
+            </div>
             <div class="sm:col-span-4">
               <BaseInput
-                v-model="form.namaLengkap"
+                v-model="form.identitas.namaLengkap"
                 label="Nama Lengkap (Sesuai KTP)"
               />
             </div>
             <div class="sm:col-span-2">
-              <BaseInput v-model="form.namaPanggilan" label="Nama Panggilan" />
-            </div>
-            <div class="sm:col-span-2">
-              <BaseInput v-model="form.tempatLahir" label="Tempat Lahir" />
+              <BaseInput
+                v-model="form.identitas.namaPanggilan"
+                label="Nama Panggilan"
+              />
             </div>
             <div class="sm:col-span-2">
               <BaseInput
-                v-model="form.tanggalLahir"
+                v-model="form.identitas.tempatLahir"
+                label="Tempat Lahir"
+              />
+            </div>
+            <div class="sm:col-span-2">
+              <BaseInput
+                v-model="form.identitas.tanggalLahir"
                 label="Tanggal Lahir"
                 type="date"
               />
@@ -301,19 +361,19 @@ watch(
                   suffix="Bln"
                   type="number"
                 />
-                <!-- <BaseInput :model-value="umurHari" suffix="Hr" type="number" /> -->
+                <BaseInput :model-value="umurHari" suffix="Hr" type="number" />
               </div>
             </div>
             <div class="sm:col-span-2">
               <BaseRadioGroup
-                v-model="form.jenisKelamin"
+                v-model="form.identitas.jenisKelamin"
                 label="Jenis Kelamin"
                 :options="opsiGender"
               />
             </div>
             <div class="sm:col-span-2">
               <BaseSelect
-                v-model="form.status"
+                v-model="form.identitas.status"
                 label="Status Pernikahan"
                 :options="opsiStatus"
                 placeholder="Pilih"
@@ -321,7 +381,7 @@ watch(
             </div>
             <div class="sm:col-span-2">
               <BaseSelect
-                v-model="form.agama"
+                v-model="form.identitas.agama"
                 label="Agama"
                 :options="opsiAgama"
                 placeholder="Pilih"
@@ -329,17 +389,17 @@ watch(
             </div>
             <div class="sm:col-span-2">
               <BaseSelect
-                v-model="form.pendidikan"
+                v-model="form.identitas.pendidikan"
                 label="Pendidikan"
                 :options="opsiPendidikan"
                 placeholder="Pilih"
               />
             </div>
             <div class="sm:col-span-2">
-              <BaseInput v-model="form.pekerjaan" label="Pekerjaan" />
+              <BaseInput v-model="form.identitas.pekerjaan" label="Pekerjaan" />
             </div>
             <div class="sm:col-span-2">
-              <BaseInput v-model="form.noHp" label="No. Telp/HP" />
+              <BaseInput v-model="form.identitas.noHp" label="No. Telp/HP" />
             </div>
           </div>
         </div>
@@ -359,23 +419,52 @@ watch(
             Alamat Domisili
           </h2>
           <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-12">
-            <div class="sm:col-span-8">
-              <BaseInput v-model="form.alamat" label="Alamat" />
+            <div class="sm:col-span-6">
+              <BaseSelectWilayah
+                v-model="form.alamat.provinsiId"
+                label="Provinsi"
+                :options="listWilayah.pasien.provinsi"
+                placeholder="Pilih Provinsi"
+              />
             </div>
-            <div class="sm:col-span-2">
-              <BaseInput v-model="form.rt" label="RT" type="number" />
+
+            <div class="sm:col-span-6">
+              <BaseSelectWilayah
+                v-model="form.alamat.kabupatenId"
+                label="Kabupaten / Kota"
+                :options="listWilayah.pasien.kabupaten"
+                placeholder="Pilih Kabupaten"
+                :disabled="!form.alamat.provinsi"
+              />
             </div>
-            <div class="sm:col-span-2">
-              <BaseInput v-model="form.rw" label="RW" type="number" />
+
+            <div class="sm:col-span-6">
+              <BaseSelectWilayah
+                v-model="form.alamat.kecamatanId"
+                label="Kecamatan"
+                :options="listWilayah.pasien.kecamatan"
+                placeholder="Pilih Kecamatan"
+                :disabled="!form.alamat.kabupaten"
+              />
             </div>
-            <div class="sm:col-span-4">
-              <BaseInput v-model="form.desa" label="Desa" />
+
+            <div class="sm:col-span-6">
+              <BaseSelectWilayah
+                v-model="form.alamat.desaId"
+                label="Desa / Kelurahan"
+                :options="listWilayah.pasien.desa"
+                placeholder="Pilih Desa"
+                :disabled="!form.alamat.kecamatan"
+              />
             </div>
-            <div class="sm:col-span-4">
-              <BaseInput v-model="form.kecamatan" label="Kecamatan" />
+            <div class="sm:col-span-6">
+              <BaseInput v-model="form.alamat.alamatJalan" label="Dusun" />
             </div>
-            <div class="sm:col-span-4">
-              <BaseInput v-model="form.kabupaten" label="Kabupaten / Kota" />
+            <div class="sm:col-span-3">
+              <BaseInput v-model="form.alamat.rt" label="RT" type="number" />
+            </div>
+            <div class="sm:col-span-3">
+              <BaseInput v-model="form.alamat.rw" label="RW" type="number" />
             </div>
           </div>
         </div>
@@ -400,11 +489,11 @@ watch(
           </div>
           <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6">
             <div class="sm:col-span-3">
-              <BaseInput v-model="form.daruratNama" label="Nama Keluarga" />
+              <BaseInput v-model="form.darurat.nama" label="Nama Keluarga" />
             </div>
             <div class="sm:col-span-3">
               <BaseSelect
-                v-model="form.hubungan"
+                v-model="form.darurat.hubungan"
                 label="Hubungan"
                 :options="opsiHubungan"
               />
@@ -432,45 +521,69 @@ watch(
                 </label>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                <div class="sm:col-span-8">
-                  <BaseInput v-model="form.daruratAlamat" label="Alamat" />
+                <div class="sm:col-span-6">
+                  <BaseSelectWilayah
+                    v-model="form.darurat.provinsiId"
+                    label="Provinsi"
+                    :options="listWilayah.darurat.provinsi"
+                    placeholder="Pilih Provinsi"
+                    :disabled="isSameAddress"
+                  />
                 </div>
-                <div class="sm:col-span-2">
+
+                <div class="sm:col-span-6">
+                  <BaseSelectWilayah
+                    v-model="form.darurat.kabupatenId"
+                    label="Kabupaten / Kota"
+                    :options="listWilayah.darurat.kabupaten"
+                    placeholder="Pilih Kabupaten"
+                    :disabled="!form.darurat.provinsiId || isSameAddress"
+                  />
+                </div>
+
+                <div class="sm:col-span-6">
+                  <BaseSelectWilayah
+                    v-model="form.darurat.kecamatanId"
+                    label="Kecamatan"
+                    :options="listWilayah.darurat.kecamatan"
+                    placeholder="Pilih Kecamatan"
+                    :disabled="!form.darurat.kabupatenId || isSameAddress"
+                  />
+                </div>
+
+                <div class="sm:col-span-6">
+                  <BaseSelectWilayah
+                    v-model="form.darurat.desaId"
+                    label="Desa / Kelurahan"
+                    :options="listWilayah.darurat.desa"
+                    placeholder="Pilih Desa"
+                    :disabled="!form.darurat.kecamatanId || isSameAddress"
+                  />
+                </div>
+                <div class="sm:col-span-6">
+                  <BaseInput v-model="form.darurat.alamatJalan" label="Dusun" />
+                </div>
+                <div class="sm:col-span-3">
                   <BaseInput
-                    v-model="form.daruratRt"
+                    v-model="form.darurat.rt"
                     label="RT"
                     type="number"
                   />
                 </div>
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-3">
                   <BaseInput
-                    v-model="form.daruratRw"
+                    v-model="form.darurat.rw"
                     label="RW"
                     type="number"
-                  />
-                </div>
-                <div class="sm:col-span-4">
-                  <BaseInput v-model="form.daruratDesa" label="Desa" />
-                </div>
-                <div class="sm:col-span-4">
-                  <BaseInput
-                    v-model="form.daruratKecamatan"
-                    label="Kecamatan"
-                  />
-                </div>
-                <div class="sm:col-span-4">
-                  <BaseInput
-                    v-model="form.daruratKabupaten"
-                    label="Kabupaten"
                   />
                 </div>
               </div>
             </div>
             <div class="sm:col-span-3">
-              <BaseInput v-model="form.daruratHp1" label="No. Telp/HP 1" />
+              <BaseInput v-model="form.darurat.hp1" label="No. Telp/HP 1" />
             </div>
             <div class="sm:col-span-3">
-              <BaseInput v-model="form.daruratHp2" label="No. Telp/HP 2" />
+              <BaseInput v-model="form.darurat.hp2" label="No. Telp/HP 2" />
             </div>
           </div>
         </div>
