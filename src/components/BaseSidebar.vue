@@ -27,6 +27,16 @@ const menuItems = [
     icon: "clipboard-document-list",
     path: "/rawat-inap",
   },
+  {
+    name: "Login",
+    icon: "building-office",
+    path: "/login",
+  },
+  {
+    name: "No. Registrasi",
+    icon: "clipboard-document-list",
+    path: "/noRegistrasi",
+  },
 ];
 
 const handleItemClick = () => {

@@ -1,14 +1,9 @@
 @import "tailwindcss";
 
-@media print {
+html, body, #app {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 
-  aside, header, .sidebar {
-    display: none !important;
-  }
-  
-  main {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-  }
 }

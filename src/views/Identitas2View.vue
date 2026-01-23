@@ -10,6 +10,7 @@ import { useAgeDatefns } from "@/composables/useAgeDatefns";
 import wilayahServices from "@/services/wilayahServices.js";
 import BaseSelectWilayah from "@/components/BaseSelectWilayah.vue";
 
+const router = useRouter();
 const opsiStatus = ["Kawin", "Belum Kawin", "Janda", "Duda"];
 const opsiAgama = ["Islam", "Kristen", "Katolik", "Hindu", "Budha", "Lainnya"];
 const opsiPendidikan = ["SD", "SLTP", "SLTA", "Perguruan Tinggi", "Lainnya"];

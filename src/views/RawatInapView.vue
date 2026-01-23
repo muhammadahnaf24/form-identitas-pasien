@@ -1,13 +1,9 @@
 <script setup>
 import { useRouter } from "vue-router";
 import { reactive, computed, toRef, ref, watchEffect } from "vue";
-import { useAge } from "@/composables/useAge";
 import BaseSignaturePad from "@/components/BaseSignaturePad.vue";
 import BaseInput from "@/components/BaseInput.vue";
-import BaseRadioGroup from "@/components/BaseRadioGroup.vue";
 import BaseSelect from "@/components/BaseSelect.vue";
-import PasienLabel from "@/components/PasienLabel.vue";
-import CetakIdentitas from "@/components/CetakIdentitas.vue";
 
 const router = useRouter();
 const form = reactive({
@@ -51,7 +47,7 @@ const tanggalHariIni = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto space-y-8">
+  <div class="max-w-5xl mx-auto space-y-8 py-10 px-4 sm:px-6 lg:px-8">
     <div
       class="mb-8 flex items-center justify-between border-b border-gray-200 pb-4"
     >
@@ -97,10 +93,9 @@ const tanggalHariIni = computed(() => {
               <BaseInput v-model="form.pjAlamat" label="Alamat" />
             </div>
             <div class="sm:col-span-2">
-              <BaseSelect
+              <BaseInput
                 v-model="form.pjHubungan"
                 label="Hubungan dengan Pasien"
-                :options="opsiHubungan"
               />
             </div>
           </div>
