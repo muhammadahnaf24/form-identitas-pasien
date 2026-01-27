@@ -118,9 +118,40 @@ const formatTanggalIndo = (dateString) => {
         <div class="w-4 text-center">:</div>
         <div class="flex-1">
           {{ data.tempatLahir }}, {{ formatTanggalIndo(data.tanggalLahir) }}
-          <span v-if="data.umurTahun" class="ml-2 italic"
-            >({{ data.umurTahun }} Thn {{ data.umurBulan }} Bln)</span
+        </div>
+      </div>
+
+      <div class="flex">
+        <div class="w-48">Usia</div>
+        <div class="w-4 text-center">:</div>
+        <div class="flex-1">
+          <span v-if="data.umurTahun && data.umurTahun != 0">
+            {{ data.umurTahun }} Tahun
+          </span>
+
+          <span
+            v-if="
+              data.umurTahun &&
+              data.umurTahun != 0 &&
+              data.umurBulan &&
+              data.umurBulan != 0
+            "
           >
+            &nbsp;
+          </span>
+
+          <span v-if="data.umurBulan && data.umurBulan != 0">
+            {{ data.umurBulan }} Bulan
+          </span>
+
+          <span
+            v-if="
+              (!data.umurTahun || data.umurTahun == 0) &&
+              (!data.umurBulan || data.umurBulan == 0)
+            "
+          >
+            -
+          </span>
         </div>
       </div>
 

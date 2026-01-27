@@ -14,9 +14,10 @@ import apiService from "@/services/apiService.js";
 import BaseInput from "@/components/BaseInput.vue";
 import BaseSignaturePad from "@/components/BaseSignaturePad.vue";
 import CetakIdentitas from "@/components/CetakIdentitas.vue";
-import html2pdf from "html2pdf.js";
 import BaseButton from "@/components/BaseButton.vue";
 import { alertError, alertAutoClose, alertSuccess } from "@/utils/swal";
+import { generateIdentitasPdf } from "@/utils/pdfGenerator";
+import logoImage from "@/assets/logo.png";
 
 const route = useRoute();
 const router = useRouter();
@@ -207,58 +208,18 @@ const handleBack = () => {
 
 const handleSaveAsPdf = async () => {
   if (!form.tandaTangan) {
-    alertError(
-      "Tanda Tangan Belum Ada",
-      "Mohon sertakan tanda tangan digital agar dokumen sah.",
-    );
-    return;
+    return alertError("Gagal", "Tanda tangan wajib diisi.");
   }
 
   isSendingPdf.value = true;
 
   try {
-    const element = pdfContentRef.value?.$el || pdfContentRef.value;
+    await generateIdentitasPdf(form, logoImage);
 
-    if (!element) {
-      throw new Error("Template PDF tidak ditemukan (Ref Error).");
-    }
-
-    const safeName = form.namaLengkap
-      ? form.namaLengkap.replace(/[^a-zA-Z0-9]/g, "_")
-      : "Pasien";
-    const fileName = `Identitas_${form.noReg}_${safeName}.pdf`;
-
-    const opt = {
-      margin: 0,
-      filename: fileName,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: {
-        scale: 2, // Resolusi 2x (High DPI) agar teks tajam
-        useCORS: true, // Wajib agar gambar Logo/Tanda Tangan bisa dirender
-        scrollY: 0, // Mencegah hasil terpotong jika user sedang scroll ke bawah
-        logging: false,
-      },
-      jsPDF: {
-        unit: "mm",
-        format: "a4",
-        orientation: "portrait",
-      },
-    };
-
-    // 5. Eksekusi Generate & Download
-    // Fungsi .save() akan otomatis mendownload file ke komputer user
-    await html2pdf().set(opt).from(element).save();
-
-    // 6. Notifikasi Sukses
-    alertAutoClose(
-      "Berhasil Disimpan",
-      "File PDF telah didownload ke perangkat Anda.",
-      "success",
-      2000,
-    );
+    alertSuccess("Berhasil", "PDF berhasil dibuat & didownload.");
   } catch (error) {
-    console.error("Gagal generate PDF:", error);
-    alertError("Gagal", "Terjadi kesalahan saat memproses file PDF.");
+    console.error("PDF Fail:", error);
+    alertError("Gagal", "Terjadi kesalahan saat membuat PDF.");
   } finally {
     isSendingPdf.value = false;
   }
