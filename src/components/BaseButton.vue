@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { computed } from "vue";
+
+const props = defineProps({
   type: {
     type: String,
     default: "submit",
@@ -16,18 +18,45 @@ defineProps({
     type: String,
     default: "Memproses...",
   },
+  variant: {
+    type: String,
+    default: "sky",
+    validator(value) {
+      return ["sky", "emerald", "white", "danger"].includes(value);
+    },
+  },
+  // Prop Baru: Mengatur Sudut
+  rounded: {
+    type: String,
+    default: "rounded-xl",
+  },
+});
+
+const baseClass =
+  "group relative inline-flex items-center justify-center gap-2 border px-6 py-4 text-base font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-0.5 disabled:hover:translate-y-0 active:scale-[0.98]";
+
+const variantClasses = {
+  sky: "bg-sky-600 border-transparent text-white shadow-lg shadow-sky-200 hover:bg-sky-700 focus:ring-sky-500",
+  emerald:
+    "bg-emerald-600 border-transparent text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 focus:ring-emerald-500",
+  white:
+    "bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus:ring-gray-200",
+  danger:
+    "bg-red-600 border-transparent text-white shadow-lg shadow-red-200 hover:bg-red-700 focus:ring-red-500",
+};
+
+// Gabungkan semua class
+const buttonClasses = computed(() => {
+  return [baseClass, variantClasses[props.variant], props.rounded].join(" ");
 });
 </script>
 
 <template>
-  <button
-    :type="type"
-    :disabled="disabled || loading"
-    class="group relative flex w-full justify-center rounded-full bg-sky-600 py-3.5 px-4 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-600 hover:shadow-blue-500/50 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 active:scale-[0.98]"
-  >
+  <button :type="type" :disabled="disabled || loading" :class="buttonClasses">
     <span v-if="loading" class="flex items-center gap-2">
       <svg
-        class="h-5 w-5 animate-spin text-white"
+        class="h-5 w-5 animate-spin"
+        :class="variant === 'white' ? 'text-gray-500' : 'text-white'"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -52,7 +81,7 @@ defineProps({
     <span v-else class="flex items-center gap-2">
       <slot>Kirim</slot>
 
-      <slot name="icon"></slot>
+      <slot name="icon"> </slot>
     </span>
   </button>
 </template>

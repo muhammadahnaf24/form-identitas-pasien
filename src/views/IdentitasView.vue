@@ -14,16 +14,20 @@ import apiService from "@/services/apiService.js";
 import BaseInput from "@/components/BaseInput.vue";
 import BaseSignaturePad from "@/components/BaseSignaturePad.vue";
 import CetakIdentitas from "@/components/CetakIdentitas.vue";
+import html2pdf from "html2pdf.js";
+import BaseButton from "@/components/BaseButton.vue";
+import { alertError, alertAutoClose, alertSuccess } from "@/utils/swal";
 
 const route = useRoute();
 const router = useRouter();
 
 const isLoadingData = ref(true);
 const isSaving = ref(false);
+const isSendingPdf = ref(false);
+const pdfContentRef = ref(null);
 
 // Form Reactive
 const form = reactive({
-  // Identitas Utama
   noReg: "",
   noRm: "",
   nik: "",
@@ -40,7 +44,6 @@ const form = reactive({
   pekerjaan: "",
   noHp: "",
 
-  // Alamat Domisili
   alamat: "",
   rt: "",
   rw: "",
@@ -49,7 +52,6 @@ const form = reactive({
   kabupaten: "",
   provinsi: "",
 
-  // Kontak Darurat
   daruratNama: "",
   hubungan: "",
   daruratHp1: "",
@@ -68,7 +70,10 @@ const tglLahirRef = toRef(form, "tanggalLahir");
 const { umurTahun, umurBulan, umurHari } = useAgeDatefns(tglLahirRef);
 const handlePrint = () => {
   if (!form.namaLengkap) {
-    alert("Mohon isi Nama Lengkap sebelum mencetak.");
+    alertError(
+      "Data Belum Lengkap",
+      "Mohon isi Nama Lengkap sebelum mencetak.",
+    );
     return;
   }
   const originalTitle = document.title;
@@ -98,7 +103,7 @@ onMounted(async () => {
   const noRegParam = route.query.reg;
 
   if (!noRegParam) {
-    alert("Nomor Registrasi tidak ditemukan. Kembali ke halaman sebelumnya.");
+    alertError("Error", "Nomor Registrasi tidak ditemukan.");
     router.push({ name: "noRegistrasi" });
     return;
   }
@@ -146,15 +151,14 @@ onMounted(async () => {
       form.daruratHp2 = data.vc_telpon || "";
       form.daruratAlamat = data.vc_alamat_w || "";
     } else {
-      alert(response.data.message || "Data pasien tidak ditemukan");
-      outer.push({ name: "input-registrasi" });
+      alertError("Data Tidak Ditemukan", "Data pasien tidak ditemukan.");
+
+      router.push({ name: "noRegistrasi" });
     }
   } catch (error) {
     console.error("Gagal mengambil data pasien", error);
-    alert(
-      "Terjadi kesalahan saat mengambil data pasien: " +
-        (error.message || "Unknown Error"),
-    );
+
+    alertError("Gagal Memuat Data", "Terjadi kesalahan sistem.");
   } finally {
     setTimeout(() => {
       isLoadingData.value = false;
@@ -168,7 +172,10 @@ const handleSignatureUpdate = (dataUrl) => {
 
 const handleSubmit = async () => {
   if (!form.tandaTangan) {
-    alert("Mohon sertakan tanda tangan digital.");
+    alertError(
+      "Tanda Tangan Belum Ada",
+      "Mohon sertakan tanda tangan digital.",
+    );
     return;
   }
 
@@ -176,18 +183,85 @@ const handleSubmit = async () => {
   try {
     console.log("Mengirim Data:", form);
     setTimeout(() => {
-      alert("Data Identitas Berhasil Disimpan!");
+      alertSuccess(
+        "Berhasil",
+        "Data identitas pasien berhasil disimpan.",
+        1500,
+      );
       isSaving.value = false;
     }, 1000);
   } catch (error) {
     console.error(error);
-    alert("Gagal menyimpan data.");
+
+    alertError("Gagal", "Terjadi kesalahan saat menyimpan data.");
     isSaving.value = false;
   }
 };
 
 const handleBack = () => {
+  setTimeout(() => {
+    router;
+  }, 1000);
   router.push({ name: "noRegistrasi" });
+};
+
+const handleSaveAsPdf = async () => {
+  if (!form.tandaTangan) {
+    alertError(
+      "Tanda Tangan Belum Ada",
+      "Mohon sertakan tanda tangan digital agar dokumen sah.",
+    );
+    return;
+  }
+
+  isSendingPdf.value = true;
+
+  try {
+    const element = pdfContentRef.value?.$el || pdfContentRef.value;
+
+    if (!element) {
+      throw new Error("Template PDF tidak ditemukan (Ref Error).");
+    }
+
+    const safeName = form.namaLengkap
+      ? form.namaLengkap.replace(/[^a-zA-Z0-9]/g, "_")
+      : "Pasien";
+    const fileName = `Identitas_${form.noReg}_${safeName}.pdf`;
+
+    const opt = {
+      margin: 0,
+      filename: fileName,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: {
+        scale: 2, // Resolusi 2x (High DPI) agar teks tajam
+        useCORS: true, // Wajib agar gambar Logo/Tanda Tangan bisa dirender
+        scrollY: 0, // Mencegah hasil terpotong jika user sedang scroll ke bawah
+        logging: false,
+      },
+      jsPDF: {
+        unit: "mm",
+        format: "a4",
+        orientation: "portrait",
+      },
+    };
+
+    // 5. Eksekusi Generate & Download
+    // Fungsi .save() akan otomatis mendownload file ke komputer user
+    await html2pdf().set(opt).from(element).save();
+
+    // 6. Notifikasi Sukses
+    alertAutoClose(
+      "Berhasil Disimpan",
+      "File PDF telah didownload ke perangkat Anda.",
+      "success",
+      2000,
+    );
+  } catch (error) {
+    console.error("Gagal generate PDF:", error);
+    alertError("Gagal", "Terjadi kesalahan saat memproses file PDF.");
+  } finally {
+    isSendingPdf.value = false;
+  }
 };
 </script>
 
@@ -204,13 +278,10 @@ const handleBack = () => {
         </h1>
         <p class="text-sm text-gray-500 mt-1">Data pasien</p>
       </div>
-      <button
-        @click="handleBack"
-        class="inline-flex justify-center items-center gap-2 rounded-xl bg-sky-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-sky-200 hover:bg-blue-600 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-      >
+      <BaseButton type="button" variant="sky" @click="handleBack">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="h-4 w-4"
+          class="h-4 w-4 mr-1"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -223,7 +294,7 @@ const handleBack = () => {
           />
         </svg>
         Kembali
-      </button>
+      </BaseButton>
     </div>
 
     <div
@@ -556,57 +627,65 @@ const handleBack = () => {
       <div
         class="flex flex-col-reverse sm:flex-row justify-end items-center gap-4 pt-6 pb-12"
       >
-        <button
+        <BaseButton
           type="button"
+          variant="white"
+          rounded="rounded-xl"
           @click="handlePrint"
-          class="group relative inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white border border-gray-300 px-6 py-4 text-base font-bold text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:text-gray-900 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-200 focus:ring-offset-2"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 text-gray-500 transition-colors group-hover:text-gray-900"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-            />
-          </svg>
-          CETAK FORMULIR
-        </button>
-
-        <button
-          type="submit"
-          :disabled="isSaving"
-          class="inline-flex justify-center items-center gap-2 rounded-xl bg-sky-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-sky-200 hover:bg-blue-600 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          <svg
-            v-if="isSaving"
-            class="h-5 w-5 animate-spin text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
+          CETAK MANUAL
+          <template #icon>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 text-gray-500 transition-colors group-hover:text-gray-900"
+              fill="none"
+              viewBox="0 0 24 24"
               stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+              />
+            </svg>
+          </template>
+        </BaseButton>
 
-          <span v-else class="flex items-center gap-2">
-            SIMPAN DATA
+        <BaseButton
+          type="button"
+          variant="emerald"
+          rounded="rounded-xl"
+          :loading="isSendingPdf"
+          loading-text="Mengirim PDF..."
+          @click="handleSaveAsPdf"
+        >
+          KIRIM PDF
+          <template #icon>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+          </template>
+        </BaseButton>
+
+        <BaseButton
+          type="submit"
+          :loading="isSaving"
+          loading-text="Menyimpan..."
+        >
+          SIMPAN DATA
+          <template #icon>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5 transition-transform group-hover:translate-x-1"
@@ -621,10 +700,10 @@ const handleBack = () => {
                 d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
               />
             </svg>
-          </span>
-        </button>
+          </template>
+        </BaseButton>
       </div>
     </form>
   </div>
-  <CetakIdentitas :data="form" />
+  <CetakIdentitas :data="form" ref="pdfContentRef" />
 </template>

@@ -15,8 +15,10 @@
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "date-fns": "^4.1.0",
+    "html2pdf.js": "^0.14.0",
     "pinia": "^3.0.4",
     "relativedelta": "^1.1.2",
+    "sweetalert": "^2.1.2",
     "sweetalert2": "^11.26.17",
     "vue": "^3.5.26",
     "vue-router": "^4.6.4"

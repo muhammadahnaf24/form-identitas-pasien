@@ -5,33 +5,64 @@ import logo from "@/assets/logo.png";
 import apiService from "@/services/apiService.js";
 import BaseRoundedInput from "@/components/BaseRoundedInput.vue";
 import BaseButton from "@/components/BaseButton.vue";
+import { alertError, alertAutoClose } from "@/utils/swal";
 
 const router = useRouter();
 
 const form = reactive({ username: "", password: "", rememberMe: false });
 const isLoading = ref(false);
 const showPassword = ref(false);
-const errorMessage = ref("");
 
 const handleLogin = async () => {
-  errorMessage.value = "";
   if (!form.username || !form.password) {
-    errorMessage.value = "Username dan Password wajib diisi.";
+    alertError("Validasi Gagal", "Username dan Password wajib diisi.");
     return;
   }
 
   isLoading.value = true;
+
   try {
-    const response = await apiService.login({
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    const res = await apiService.login({
       username: form.username,
       password: form.password,
     });
-    if (response.data.success) {
-      router.push({ name: "noRegistrasi" });
+
+    if (res.data.success) {
+      const apiData = res.data.data || res.data;
+      const userData = apiData.response?.user || apiData.user;
+      const token = apiData.response?.token || apiData.token;
+
+      if (token && userData) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("user_data", JSON.stringify(userData));
+
+        await alertAutoClose(
+          "Login Berhasil",
+          `Selamat datang, ${userData.RealName || userData.UserName}!`,
+          "success",
+          1500,
+        );
+
+        router.push({ name: "noRegistrasi" });
+      } else {
+        throw new Error("Token atau Data User tidak ditemukan dalam response.");
+      }
+    } else {
+      alertError(
+        "Gagal Login",
+        res.data.message || "Username atau password salah.",
+      );
     }
   } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Gagal terhubung ke server.";
+    console.error("Login Error:", error);
+
+    const msg =
+      error.response?.data?.message ||
+      error.message ||
+      "Gagal terhubung ke server.";
+    alertError("Terjadi Kesalahan", msg);
   } finally {
     isLoading.value = false;
   }
@@ -90,21 +121,10 @@ const handleLogin = async () => {
           </p>
         </div>
 
-        <div
-          v-if="errorMessage"
-          class="flex items-center gap-3 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 text-red-700 shadow-sm animate-pulse"
+        <form
+          @submit.prevent="handleLogin"
+          class="space-y-6 mt-8 text-center lg:text-left"
         >
-          <svg class="h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fill-rule="evenodd"
-              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-              clip-rule="evenodd"
-            />
-          </svg>
-          <span class="text-sm font-medium">{{ errorMessage }}</span>
-        </div>
-
-        <form @submit.prevent="handleLogin" class="space-y-6 mt-8">
           <BaseRoundedInput
             v-model="form.username"
             placeholder="Username / NIK"
@@ -197,9 +217,9 @@ const handleLogin = async () => {
             type="submit"
             :loading="isLoading"
             loading-text="Sedang Masuk..."
+            class="w-full"
           >
-            MASUK SEKARANG
-
+            MASUK
             <template #icon>
               <svg
                 class="h-4 w-4 transition-transform group-hover:translate-x-1"
