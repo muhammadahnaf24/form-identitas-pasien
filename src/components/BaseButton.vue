@@ -25,7 +25,6 @@ const props = defineProps({
       return ["sky", "emerald", "white", "danger"].includes(value);
     },
   },
-  // Prop Baru: Mengatur Sudut
   rounded: {
     type: String,
     default: "rounded-xl",
@@ -45,7 +44,6 @@ const variantClasses = {
     "bg-red-600 border-transparent text-white shadow-lg shadow-red-200 hover:bg-red-700 focus:ring-red-500",
 };
 
-// Gabungkan semua class
 const buttonClasses = computed(() => {
   return [baseClass, variantClasses[props.variant], props.rounded].join(" ");
 });

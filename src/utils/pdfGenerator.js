@@ -69,7 +69,7 @@ export const generateIdentitasPdf = async (data, logoPath) => {
 
   const headerLabels = [
     { label: "Nama", val: (data.namaLengkap || "").toUpperCase() },
-    { label: "NIK", val: data.nik || "-" },
+    { label: "NIK", val: data.noKtp || "-" },
     { label: "No. RM", val: data.noRm || "-" },
     { label: "Tgl Lahir", val: formatTanggalIndo(data.tanggalLahir) },
   ];
@@ -131,10 +131,7 @@ export const generateIdentitasPdf = async (data, logoPath) => {
 
   writeRow("No. Registrasi", data.noReg);
   writeRow("Nama Lengkap", (data.namaLengkap || "").toUpperCase());
-  writeRow(
-    "Nama Panggilan",
-    (data.namaPanggilan || data.namaLengkap || "").toUpperCase(),
-  );
+  writeRow("NIK", data.noKtp);
   writeRow(
     "Tempat / Tgl Lahir",
     `${data.tempatLahir}, ${formatTanggalIndo(data.tanggalLahir)}`,

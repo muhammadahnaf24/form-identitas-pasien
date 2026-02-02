@@ -64,7 +64,7 @@ const formatTanggalIndo = (dateString) => {
           <span>NIK</span>
           <span class="text-center">:</span>
           <span class="font-mono tracking-wide">{{
-            data.nik || "................."
+            data.noKtp || "................."
           }}</span>
         </div>
 
@@ -105,12 +105,6 @@ const formatTanggalIndo = (dateString) => {
         <div class="w-48">Nama Lengkap</div>
         <div class="w-4 text-center">:</div>
         <div class="flex-1 uppercase">{{ data.namaLengkap }}</div>
-      </div>
-
-      <div class="flex">
-        <div class="w-48">Nama Panggilan</div>
-        <div class="w-4 text-center">:</div>
-        <div class="flex-1">{{ data.namaPanggilan || "-" }}</div>
       </div>
 
       <div class="flex">

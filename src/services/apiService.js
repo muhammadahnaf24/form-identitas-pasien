@@ -41,4 +41,7 @@ export default {
   getPasien(noReg) {
     return apiClient.get(`/pasien/${noReg}`);
   },
+  simpanIdentitas(data) {
+    return apiClient.post("/simpan", data);
+  },
 };

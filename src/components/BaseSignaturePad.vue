@@ -67,7 +67,7 @@ defineExpose({ clearCanvas });
   >
     <canvas
       ref="canvasRef"
-      class="w-full h-50 cursor-crosshair block"
+      class="w-full h-75 cursor-crosshair block"
       @mousedown="startDrawing"
       @mousemove="draw"
       @mouseup="stopDrawing"
